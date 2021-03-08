@@ -1,5 +1,5 @@
 from tkinter import *
-import tkinter.ttk as tk
+from tkinter.ttk import *
 from pymysql import *
 from admin import Admin
 from registeredUser import User
@@ -39,6 +39,13 @@ def login(t):
                  command=lambda: register(top)).place(x=70, y=200)
     lab3=Label(top,textvariable=msg,text='').place(x=50,y=250)
 
+
+def regValid():
+    cur.execute("insert into user_data(user_email,user_pass,user_name,user_contact) values('{}','{}','{}',{})".format(email.get(),newPassword.get(),userName.get(),contact.get()))
+    db.commit()
+    msg.set('Registered Successfully')
+
+
 def register(t):
     t.destroy()
     top=Toplevel()
@@ -49,16 +56,16 @@ def register(t):
     head = Label(top, text="MyMovie", font=("Arial", 25)).place(x=180, y=30)
     tag = Label(top, text="Movie Ticket Booking System").place(x=170, y=80)
     lab3=Label(top,text='Enter Your Name').place(x=20,y=140)
-    e3=Entry(top,textvariable=userName).place(x=100,y=140)
+    e3=Entry(top,textvariable=userName).place(x=150,y=140)
     lab1 = Label(top, text='Enter Email').place(x=20, y=170)
-    e1 = Entry(top, textvariable=email).place(x=100, y=170)
+    e1 = Entry(top, textvariable=email).place(x=150, y=170)
     lab2 = Label(top, text='Create Password').place(x=20, y=200)
-    e2 = Entry(top, textvariable=newPassword).place(x=100, y=200)
+    e2 = Entry(top, textvariable=newPassword).place(x=150, y=200)
     lab4=Label(top,text='Enter Mobile number').place(x=20,y=230)
-    e4=Entry(top,textvariable=contact).place(x=100,y=230)
+    e4=Entry(top,textvariable=contact).place(x=150,y=230)
 
     reg = Button(top, text='Register', relief=GROOVE,
-                 command=lambda: register(top)).place(x=20, y=270)
+                 command=regValid).place(x=20, y=270)
     errmsg=Label(top,textvariable=msg,text='').place(x=50,y=260)
 
 def dash(c):
