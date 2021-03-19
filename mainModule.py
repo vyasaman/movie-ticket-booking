@@ -1536,10 +1536,10 @@ def forgetValid(t, text):
         lab = Label(top, text='Enter OTP').place(x=50, y=50)
         otptext = Entry(top, textvariable=otpValid).place(x=180, y=50)
         but = Button(top, text='Submit', command=lambda: passChange(
-            top, otp, otpValid.get())).place(x=50, y=100)
+            top, otp, otpValid.get(), text)).place(x=50, y=100)
 
 
-def passChange(t, otp, otpUser):
+def passChange(t, otp, otpUser, mail):
     newPass = StringVar()
     if otp == otpUser:
         top = Toplevel()
@@ -1549,7 +1549,7 @@ def passChange(t, otp, otpUser):
         lab1 = Label(top, text='Enter New Password').place(x=50, y=100)
         passText = Entry(top, textvariable=newPass).place(x=250, y=100)
         but1 = Button(top, text='Update', command=lambda: updatePass(
-            newPass.get())).place(x=50, y=150)
+            newPass.get(), mail)).place(x=50, y=150)
 
     else:
         top = Toplevel()
@@ -1559,8 +1559,9 @@ def passChange(t, otp, otpUser):
                      command=top.destroy).place(x=240, y=100)
 
 
-def updatePass(newP):
-    cur.execute("update user_data set user_pass='{}'".format(newP))
+def updatePass(newP, mail):
+    cur.execute(
+        "update user_data set user_pass='{}' where user_email='{}'".format(newP, mail))
     db.commit()
     top = Toplevel()
     top.geometry('300x200')
