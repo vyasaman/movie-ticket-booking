@@ -87,6 +87,7 @@ class RegisteredUser:
         head = Label(top, text="Select Your Seats", font=('arial', 18)).pack()
         head1 = Label(top, text=movie, font=('arial', 14)).pack()
         head2 = Label(top, text=thname).pack()
+        print(c, movie, thname, mov_time)
         d1 = data[c][movie][thname][mov_time]
         p = 50
         q = 50
@@ -136,7 +137,12 @@ class RegisteredUser:
         temp = True
         for i in seatList:
             if i in d1:
-                temp = True
+                if d1[i] == 0:
+                    temp = True
+                else:
+                    errorMsg.set("Invalid Seat Detail:- "+i)
+                    temp = False
+                    break
             else:
                 errorMsg.set("Invalid Seat Detail:- "+i)
                 temp = False
@@ -151,7 +157,7 @@ class RegisteredUser:
         ampm = ""
         if int(ti[0]) > 12:
             ti[0] = int(ti[0])-12
-            ti[0] = str(ti[0])
+            ti[0] = '0'+str(ti[0])
             ampm = 'PM'
         elif int(ti[0]) == 12:
             ti[0] = str(int(ti[0]))
@@ -405,8 +411,9 @@ class RegisteredUser:
             else:
                 tot = tot-(tot*1/100)
         dat9 = Label(top, text="{} Rs".format(tot)).place(x=250, y=280)
+        print(tot)
 
-        net = tot+tot*12/100
+        net = tot+(tot*8/100)
         dat7 = Label(top, text="{}".format(net)
                      ).place(x=250, y=310)
         dat8 = Label(top, text=', '.join(seatList)).place(x=250, y=340)
@@ -510,7 +517,7 @@ class RegisteredUser:
         dat6 = Label(top, text=res[5]).place(x=250, y=300)
 
     def giftGards(self):
-        pass
+        cur
 
     def showProfile(self, res):
 
@@ -569,6 +576,82 @@ class RegisteredUser:
             db.commit
             print('Updated')
 
+    def cancelBooking(self, r, t):
+        moviebox = StringVar()
+        thbox = StringVar()
+        cur.execute("select * from booking where book_user={}".format(r[0]))
+        res = cur.fetchall()
+        li = []
+        li2 = []
+        for i in res:
+            if i[-1] == 'Booked':
+                if i[1] not in li:
+                    li.append(i[1])
+        for j in res:
+            if i[-1] == 'Booked':
+                if i[2] not in li2:
+                    li2.append(i[2])
+
+        t.destroy()
+        top = Toplevel()
+        top.geometry('500x400')
+        head = Label(top, text='Cancel Booking', font=('arial', 20)).pack()
+        lab = Label(top, text='Select Movie').place(x=50, y=80)
+        mov_CB = tk.Combobox(top, textvariable=moviebox,
+                             values=li).place(x=200, y=80)
+        lab2 = Label(top, text='Select Theatre').place(x=50, y=120)
+        th_CB = tk.Combobox(top, textvariable=thbox,
+                            values=li2).place(x=200, y=120)
+        cbut = Button(top, text='Cancel Ticket', command=lambda: confCancel(
+            moviebox, thbox, r[0])).place(x=100, y=200)
+
+        def confCancel(moviebox, thbox, u):
+            top2 = Toplevel()
+            top2.geometry('300x200')
+            la = Label(top2, text='Confirm Cancel').place(x=50, y=50)
+            but = Button(top2, text='Yes', command=lambda: self.cancelValid(
+                moviebox.get(), thbox.get(), u, top)).place(x=100, y=100)
+            but2 = Button(top2, text='No', command=top2.destroy).place(
+                x=150, y=100)
+
+    def cancelValid(self, moviebox, thbox, u, t):
+        t.destroy()
+        cur.execute(
+            "select * from booking inner join user_data on booking.book_user=user_data.user_id where book_user={} and book_status='Booked'".format(u))
+        res = cur.fetchone()
+        cur.execute("update booking set book_status='Cancelled' where book_id={}".format(
+            res[0]))
+        db.commit()
+
+        sender = 'amanvyas720@gmail.com'
+        reciver = [res[-5]]
+        canmsg = """
+            From :- MyMovie.in
+
+            Subject:- Ticket Cancellation Done
+
+            Your Ticket for Booking ID - {}
+            is Cancelled.
+         """.format(res[0])
+        data = json.load(open('seatsdata.json'))
+        seatList = res[3]
+        seatList = seatList.split(", ")
+        time = self.time(res[4])
+        for i in seatList:
+
+            data[res[5]][res[1]][res[2]][time][i] = 0
+            json.dump(data, open('seatsdata.json', "w"))
+
+        try:
+            server = smtp.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(sender, '8823074130')
+            server.sendmail(sender, reciver, canmsg)
+            print("Email sent Successfuly")
+
+        except Exception as e:
+            print(e)
+
     def user_dashboard(self, res, t):
         t.destroy()
         top = Toplevel()
@@ -587,6 +670,8 @@ class RegisteredUser:
             width=150, x=230, y=190)
         but4 = Button(top, text='Booking History', command=lambda: self.bookHistory(res), relief=GROOVE).place(
             width=150, x=230, y=160)
+        but5 = Button(top, text='Cancel Booking', command=lambda: self.cancelBooking(res, t)).place(
+            width=150, x=175, y=220)
 
 
 class UnRegisteredUser:
@@ -604,6 +689,7 @@ class UnRegisteredUser:
         lab1 = Label(top, text="Movies in "+c,
                      font=('arial', 16)).place(x=170, y=110)
         li1 = []
+        p = 0
         for i in range(len(res)):
             if res[i][1] in li1:
                 continue
@@ -611,11 +697,12 @@ class UnRegisteredUser:
                 li1.append(res[i][1])
                 lab2 = Label(top, text=res[i][1], bg="yellow",
                              fg="red", borderwidth=2, relief=SOLID, font=("arial", 14)).place(x=100, y=(i*40)+150)
-        lab3 = Label(top, text="Select Movie").place(x=100, y=((i+1)*40)+150)
+            p = i
+        lab3 = Label(top, text="Select Movie").place(x=100, y=((p+1)*40)+150)
         movieCB = tk.Combobox(top, textvariable=moviedata, values=li1).place(
-            x=100, y=((i+2)*40)+150)
+            x=100, y=((p+2)*40)+150)
         but1 = Button(top, text="Show Theatres", command=lambda: self.selectTheatre(moviedata.get(), top, res, c)).place(
-            x=250, y=((i+2)*40)+150)
+            x=250, y=((p+2)*40)+150)
 
     def selectTheatre(self, movie, t, res, c):
         top = Toplevel()
@@ -718,7 +805,12 @@ class UnRegisteredUser:
         temp = True
         for i in seatList:
             if i in d1:
-                temp = True
+                if d1[i] == 0:
+                    temp = True
+                else:
+                    errorMsg.set("Invalid Seat Detail:- "+i)
+                    temp = False
+                    break
             else:
                 errorMsg.set("Invalid Seat Detail:- "+i)
                 temp = False
@@ -1029,7 +1121,7 @@ class UnRegisteredUser:
         ampm = ""
         if int(ti[0]) > 12:
             ti[0] = int(ti[0])-12
-            ti[0] = str(ti[0])
+            ti[0] = '0'+str(ti[0])
             ampm = 'PM'
         elif int(ti[0]) == 12:
             ti[0] = str(int(ti[0]))
@@ -1043,20 +1135,268 @@ class UnRegisteredUser:
 
 
 class Administrator:
-    def addTheatre(self):
-        pass
 
-    def addMovie(self):
-        pass
+    def addTheatre(self, t):
+        thname = StringVar()
+        t.destroy()
+        top = Toplevel()
+        top.geometry('500x400')
+        head = Label(top, text="Add Theatre", font=('arial', 20)).pack()
+        lab1 = Label(top, text='Theatre Name').place(x=50, y=100)
+        lab2 = Label(top, text="Theatre Address").place(x=50, y=130)
 
-    def update(self):
-        pass
+        dat1 = Entry(top, textvariable=thname).place(x=250, y=100)
+        text = Text(top)
+        text.place(height=100, width=330, x=50, y=157)
+
+        lab5 = Label(top, text='Select State').place(x=20, y=260)
+        cb1 = tk.Combobox(top, textvariable=state_cb2,
+                          values=statedata).place(x=150, y=260)
+        cb2 = tk.Combobox(top, textvariable=city_cb2)
+        st = Button(top, text='Select',
+                    command=lambda: self.city3(state_cb2.get(), cb2, top)).place(x=300, y=260)
+        but = Button(top, text='Add', command=lambda: self.theatreValid(
+            thname.get(), text.get('1.0', END), state_cb2.get(), city_cb2.get())).place(x=100, y=350)
+
+    def theatreValid(self, thname, T, st, cit):
+        top = Toplevel()
+        top.geometry('300x200')
+        try:
+            cur.execute("insert into theatre(th_name,th_address,City,State) values('{}','{}','{}','{}')".format(
+                thname, T, cit, st))
+            db.commit()
+
+            lab = Label(top, text='Registered Successfully', font=(
+                'arial', 14), fg='green').place(x=50, y=50)
+            but = Button(top, text='OK', command=top.destroy).place(
+                x=100, y=100)
+        except Exception as e:
+            lab = Label(top, text='Registration Failed', font=(
+                'arial', 14), fg='red').place(x=50, y=50)
+            but = Button(top, text='OK', command=top.destroy).place(
+                x=100, y=100)
+
+    def addMovie(self, t):
+        t.destroy()
+        hour = StringVar()
+        mint = StringVar()
+        ampm = StringVar()
+        theatre_cb = StringVar()
+        movName = StringVar()
+        movPrice = IntVar()
+        hr = ['Hour', '01', '02', '03', '04', '05',
+              '06', '07', '08', '09', '10', '11', '12']
+        minutes = ['Min', '00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28',
+                   '29', '30', '31', '32', '33', '34', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48', '49', '50', '51', '52', '53', '54', '55', '56', '57', '58', '59']
+        am = ['AM', 'PM']
+        top = Toplevel()
+        top.geometry('500x400')
+        head = Label(top, text="Add Movie", font=('arial', 20)).pack()
+        lab1 = Label(top, text='Movie Name').place(x=50, y=50)
+        lab2 = Label(top, text='Ticket Price').place(x=50, y=80)
+        lab3 = Label(top, text="Movie Timing").place(x=50, y=110)
+
+        dat1 = Entry(top, textvariable=movName).place(x=250, y=50)
+        dat2 = Entry(top, textvariable=movPrice).place(x=250, y=80)
+
+        cb1 = tk.Combobox(top, textvariable=hour, values=hr)
+        cb2 = tk.Combobox(top, textvariable=mint, values=minutes)
+        cb3 = tk.Combobox(top, textvariable=ampm, values=am)
+
+        cb1.current(0)
+        cb2.current(0)
+        cb3.current(0)
+
+        cb1.place(width=50, x=150, y=110)
+        cb2.place(width=50, x=220, y=110)
+        cb3.place(width=50, x=270, y=110)
+
+        lab5 = Label(top, text='Select State').place(x=50, y=140)
+        st_cb = tk.Combobox(top, textvariable=state_cb2,
+                            values=statedata).place(x=150, y=140)
+        ct_cb = tk.Combobox(top, textvariable=city_cb2)
+        lab4 = Label(top, text="Theatre")
+        th_cb = tk.Combobox(top, textvariable=theatre_cb,)
+        but = Button(top, text='Select', command=lambda: self.theatreCB(
+            city_cb2.get(), lab4, th_cb))
+        st = Button(top, text='Select',
+                    command=lambda: self.cityd(state_cb2.get(), ct_cb, but, top)).place(x=300, y=140)
+        submit = Button(top, text='Submit', command=lambda: self.movValid(
+            city_cb2.get(), theatre_cb.get(), movName.get(), movPrice.get(), hour.get(), mint.get(), ampm.get())).place(x=50, y=260)
+
+    def cityd(self, st, cli, but, top):
+        for i in cityjson['states']:
+            if i['state'] == st:
+                cli['values'] = i['districts']
+        cli.place(x=150, y=170)
+        lab = Label(top, text='Select City').place(x=50, y=170)
+        but.place(x=300, y=170)
+
+    def theatreCB(self, cit, lab, th_cb):
+        cur.execute("select * from theatre where city = '{}'".format(cit))
+        rslt = cur.fetchall()
+        lab.place(x=50, y=200)
+        thList = []
+        for i in rslt:
+            thList.append(i[1])
+        th_cb['values'] = thList
+        th_cb.place(x=250, y=200)
+
+    def movValid(self, cit, thtr, movName, movPrice, hour, mint, ampm):
+        top = Toplevel()
+        top.geometry('300x200')
+        d1 = {"A1": 0, "A2": 0, "A3": 0, "A4": 0, "A5": 0, "A6": 0, "A7": 0, "A8": 0, "A9": 0,
+              "B1": 0, "B2": 0, "B3": 0, "B4": 0, "B5": 0, "B6": 0, "B7": 0, "B8": 0, "B9": 0}
+
+        a = RegisteredUser()
+        movTime1 = hour+':'+mint
+        print(movTime1)
+        if ampm == 'PM':
+            movTime = a.timeHr(movTime1)
+        movTime1 += ampm
+        cur.execute(
+            "select * from theatre where city='{}' and th_name='{}'".format(cit, thtr))
+        rt = cur.fetchone()
+
+        cur.execute(
+            "insert into movie(mov_name,theatre,ticket_price,time1) values('{}',{},{},'{}')".format(movName, rt[0], movPrice, movTime))
+        db.commit()
+
+        data = json.load(open('seatsdata.json', "r"))
+
+        if cit in data:
+            if movName in data[cit]:
+                if thtr in data[cit][movName]:
+                    if movTime1 in data[cit][movName][thtr]:
+                        data[cit][movName][thtr][movTime1] = d1
+                    else:
+                        data[cit][movName][thtr][movTime1] = d1
+                else:
+                    data[cit][movName][thtr] = {movTime1: d1}
+            else:
+                data[cit][movName] = {thtr: {movTime1: d1}}
+
+        else:
+            data[cit] = {}
+            data[cit][movName] = {thtr: {movTime1: d1}}
+
+        json.dump(data, open('seatsdata.json', "w"))
+
+        lab = Label(top, text='Movie Added Successfully', font=(
+            'arial', 15), fg='green').place(x=50, y=50)
+
+    def update(self, t, res):
+        th = StringVar()
+        mov = StringVar()
+        tim = StringVar()
+        mname = StringVar()
+        mprice = IntVar()
+        t.destroy()
+        top = Toplevel()
+        top.geometry('500x400')
+        cur.execute(
+            "select * from movie inner join theatre on movie.theatre=theatre.th_id where theatre.City='{}'".format(res[-1]))
+        res1 = cur.fetchall()
+        tList = ['Select Theatre']
+        for i in res1:
+            if i[6] in tList:
+                continue
+            else:
+                tList.append(i[6])
+        thcb = tk.Combobox(top, textvariable=th, values=tList)
+        thcb.current(0)
+        thcb.pack()
+
+        mList = ['Select Movie']
+        for i in res1:
+            if i[1] in mList:
+                continue
+            else:
+                mList.append(i[1])
+        movcb = tk.Combobox(top, textvariable=mov, values=mList)
+        movcb.current(0)
+        movcb.pack()
+
+        timeList = ['Select Time']
+        for i in res1:
+            if i[4] in timeList:
+                continue
+            else:
+                timeList.append(i[4])
+        timcb = tk.Combobox(top, textvariable=tim, values=timeList)
+        timcb.current(0)
+        timcb.pack()
+
+        lab1 = Label(top, text='Update Movie Name').place(x=50, y=130)
+        lab2 = Label(top, text='Update Ticket Price').place(x=50, y=160)
+
+        e1 = Entry(top, textvariable=mname).place(x=250, y=130)
+        e1 = Entry(top, textvariable=mprice).place(x=250, y=160)
+
+        but = Button(top, text='Update', command=lambda: self.updateValid(
+            th.get(), mov.get(), tim.get(), mname.get(), mprice.get(), res)).place(x=50, y=200)
+
+    def time(self, ti):
+        ti = str(ti)
+        ti = ti.split(":")
+        ampm = ""
+        if int(ti[0]) > 12:
+            ti[0] = int(ti[0])-12
+            ti[0] = str(ti[0])
+            ampm = 'PM'
+        elif int(ti[0]) == 12:
+            ti[0] = str(int(ti[0]))
+            ampm = 'PM'
+        else:
+            ampm = 'AM'
+        ti.pop(2)
+        ti = ':'.join(ti)
+        ti += ampm
+        return ti
+
+    def updateValid(self, thn, movn, timn, mn, movp, res):
+
+        cur.execute("SELECT movie.mov_id FROM movie INNER JOIN theatre on movie.theatre=theatre.th_id WHERE theatre.City = '{}' AND movie.mov_name='{}' and movie.time1='{}' and theatre.th_name='{}'".format(
+            res[-1], movn, timn, thn))
+        r = cur.fetchone()
+        cur.execute("update movie set mov_name='{}', ticket_price={} where mov_id={}".format(
+            mn, movp, r[0]))
+        db.commit()
+        cit = res[-1]
+        d1 = {"A1": 0, "A2": 0, "A3": 0, "A4": 0, "A5": 0, "A6": 0, "A7": 0, "A8": 0, "A9": 0,
+              "B1": 0, "B2": 0, "B3": 0, "B4": 0, "B5": 0, "B6": 0, "B7": 0, "B8": 0, "B9": 0}
+        movTime1 = self.time(movTime1)
+        data = json.load(open('seatsdata.json'))
+        if cit in data:
+            if movn in data[cit]:
+                if thn in data[cit][movn]:
+                    if movTime1 in data[cit][movn][thn]:
+                        pass
+                    else:
+                        data[cit][movn][thn][movTime1] = d1
+                else:
+                    data[cit][movn][thn] = {movTime1: d1}
+            else:
+                data[cit][movn] = {thn: {movTime1: d1}}
+
+        else:
+            data[cit] = {}
+            data[cit][movn] = {thn: {movTime1: d1}}
+
+        json.dump(data, open('seatsdata.json', "w"))
+
+        top = Toplevel()
+        top.geometry('300x200')
+
+        lab = Label(top, text="Movie Updated Successfully",
+                    font=('arial', 15), fg='green').place(x=50, y=50)
+        but = Button(top, text='OK', command=top.destroy).place(x=100, y=100)
 
     def addAdmin(self, t):
         t.destroy()
         top = Toplevel()
         top.geometry('500x400')
-        close = Button(top, tex="Back", command=top.destroy)
+        close = Button(top, text="Back", command=top.destroy)
         head = Label(top, text="MyMovie", font=(
             "Arial", 25)).place(x=180, y=30)
         tag = Label(top, text="Movie Ticket Booking System").place(x=170, y=80)
@@ -1068,15 +1408,39 @@ class Administrator:
         e2 = Entry(top, textvariable=pswd).place(x=150, y=200)
         lab4 = Label(top, text='Enter Mobile number').place(x=20, y=230)
         e4 = Entry(top, textvariable=cont).place(x=150, y=230)
+        lab5 = Label(top, text='Select State').place(x=20, y=260)
+        cb1 = tk.Combobox(top, textvariable=state_cb2,
+                          values=statedata).place(x=150, y=260)
+        cb2 = tk.Combobox(top, textvariable=city_cb2)
+        st = Button(top, text='Select',
+                    command=lambda: self.city3(state_cb2.get(), cb2, top)).place(x=300, y=260)
         reg = Button(top, text='Register', relief=GROOVE,
-                     command=regValid).place(x=20, y=270)
-        errmsg = Label(top, text='', textvariable=msg).place(x=50, y=260)
+                     command=lambda: self.regValid(uname, e_mail, pswd, cont, city_cb2.get())).place(x=20, y=350)
 
-    def regValid(self):
-        cur.execute("insert into user_data(user_email,user_pass,user_name,user_contact,user_role) values('{}','{}','{}',{},'Admin')".format(
-            e_mail.get(), pswd.get(), uname.get(), cont.get()))
-        db.commit()
-        msg.set('Registered Successfully')
+    def city3(self, s, cli, top):
+        for i in cityjson['states']:
+            if i['state'] == s:
+                cli['values'] = i['districts']
+        cli.place(x=150, y=290)
+        lab = Label(top, text='Select City').place(x=20, y=290)
+
+    def regValid(self, uname, e_mail, pswd, cont, city):
+        top = Toplevel()
+        top.geometry('300x200')
+        try:
+            cur.execute("insert into user_data(user_email,user_pass,user_name,user_mob,user_role,user_city) values('{}','{}','{}',{},'Admin','{}')".format(
+                e_mail.get(), pswd.get(), uname.get(), cont.get(), city))
+            db.commit()
+
+            lab = Label(top, text='Registered Successfully', font=(
+                'arial', 14), fg='green').place(x=50, y=50)
+            but = Button(top, text='OK', command=top.destroy).place(
+                x=100, y=100)
+        except Exception as e:
+            lab = Label(top, text='Registration Failed', font=(
+                'arial', 14), fg='red').place(x=50, y=50)
+            but = Button(top, text='OK', command=top.destroy).place(
+                x=100, y=100)
 
     def admin_dashboard(self, res, t):
         t.destroy()
@@ -1086,23 +1450,25 @@ class Administrator:
                      relief=GROOVE).place(x=450, y=0)
         head = Label(top, text="MyMovies.in", font=(
             'arial', 25)).place(x=170, y=30)
-        head = Label(top, text=res[3]+"'s Dashboard",
+        head = Label(top, text=res[1]+"'s Dashboard",
                      font=('arial', 15)).place(x=170, y=80)
         but1 = Button(top, text="Add Theatre",
-                      command=lambda: addTheatre).place(x=100, y=150)
+                      command=lambda: self.addTheatre(top)).place(x=100, y=150)
         but1 = Button(top, text="Add Movie",
-                      command=lambda: addMovie(top)).place(x=250, y=150)
+                      command=lambda: self.addMovie(top)).place(x=250, y=150)
         but1 = Button(top, text="Update Movie",
-                      command=lambda: update(top)).place(x=100, y=200)
+                      command=lambda: self.update(top, res)).place(x=100, y=200)
         but1 = Button(top, text="Add Admin",
-                      command=lambda: addAdmin(top)).place(x=250, y=200)
+                      command=lambda: self.addAdmin(top)).place(x=250, y=200)
 
 
 def validate(t):
     cur.execute("select * from user_data where user_email='{}' and user_pass='{}'".format(
         username.get(), login_password.get()))
     res = cur.fetchone()
-    if res[-2].lower() == 'admin':
+    if res == None:
+        msg.set("User Not Found")
+    elif res[-2].lower() == 'admin':
         ad.admin_dashboard(res, t)
     elif res[-2].lower() == 'user':
         user.user_dashboard(res, t)
