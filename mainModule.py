@@ -3,6 +3,7 @@ import smtplib as smtp
 import tkinter.ttk as tk
 import json
 from pymysql import *
+import random
 db = connect(host="localhost", user='root', port=3306,
              password='Aman@123', database='ticketbooking')
 cur = db.cursor()
@@ -1496,7 +1497,75 @@ def login():
                  command=lambda: validate(top)).place(x=20, y=200)
     reg = Button(top, text='Register', relief=GROOVE,
                  command=lambda: register(top)).place(x=70, y=200)
+    fgt_pass = Button(top, text='Forget Password',
+                      command=lambda: forgetPass()).place(x=150, y=200)
     lab3 = Label(top, textvariable=msg, text='').place(x=50, y=250)
+
+
+def forgetPass():
+    getemail = StringVar()
+    top = Toplevel()
+    top.geometry('300x200')
+    lab = Label(top, text='Enter e-mail address').place(x=50, y=50)
+    e1 = Entry(top, textvariable=getemail).place(x=50, y=80)
+    sub = Button(top, text='Submit', command=lambda: forgetValid(
+        top, getemail.get())).place(x=50, y=110)
+    l = Label(top, textvariable=msg, text='').place(x=50, y=150)
+
+
+def forgetValid(t, text):
+    otpValid = StringVar()
+    cur.execute("select * from user_data where user_email='{}'".format(text))
+    r = cur.fetchone()
+    if r == None:
+        msg.set("Incorrect Email address")
+    elif text in r:
+        otp = ""
+        for i in range(0, 6):
+            r = random.randint(0, 9)
+            otp += str(r)
+        server = smtp.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        reciver = [text]
+        server.login('amanvyas720@gmail.com', '8823074130')
+        server.sendmail('amanvyas720@gmail.com', reciver, otp)
+        print("Email sent Successfuly")
+        t.destroy()
+        top = Toplevel()
+        top.geometry('300x200')
+        lab = Label(top, text='Enter OTP').place(x=50, y=50)
+        otptext = Entry(top, textvariable=otpValid).place(x=180, y=50)
+        but = Button(top, text='Submit', command=lambda: passChange(
+            top, otp, otpValid.get())).place(x=50, y=100)
+
+
+def passChange(t, otp, otpUser):
+    newPass = StringVar()
+    if otp == otpUser:
+        top = Toplevel()
+        top.geometry('500x400')
+        head = Label(top, text='Change Password',
+                     font=('arial', 20)).place(x=200, y=50)
+        lab1 = Label(top, text='Enter New Password').place(x=50, y=100)
+        passText = Entry(top, textvariable=newPass).place(x=250, y=100)
+        but1 = Button(top, text='Update', command=lambda: updatePass(
+            newPass.get())).place(x=50, y=150)
+
+    else:
+        top = Toplevel()
+        top.geometry('300x200')
+        lab = Label(top, text='Incorrect OTP').place(x=50, y=50)
+        but = Button(top, text='Cancel',
+                     command=top.destroy).place(x=240, y=100)
+
+
+def updatePass(newP):
+    cur.execute("update user_data set user_pass='{}'".format(newP))
+    db.commit()
+    top = Toplevel()
+    top.geometry('300x200')
+    lab = Label(top, text='Updateed', font=('arial', 15)).pack()
+    but = Button(top, text='OK', command=top.destroy).place(x=240, y=100)
 
 
 def register(t):
